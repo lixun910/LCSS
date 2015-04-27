@@ -68,10 +68,10 @@ d3.text("data/c200.txt", function(text) {
     male.push({'index':i, 'value':parseInt(m)});
     female.push({'index':i, 'value':parseInt(f)});
   }
-  data = [male, female];
+  data = [{'color':'blue', 'values':male},{'color':'red', 'values':female}];
   
   x.domain([0, n]);
-  y.domain([0, 9]);
+  y.domain([0, 5]);
 
   svg.append("g")
       .attr("class", "x axis")
@@ -99,8 +99,8 @@ d3.text("data/c200.txt", function(text) {
 
   mline.append("path")
       .attr("class", "line")
-      .attr("d", function(d) { console.log(d); return line(d); })
-      .style("stroke", function(d) { return '#00FFFF'; });
+      .attr("d", function(d) { console.log(d); return line(d.values); })
+      .style("stroke", function(d) { return d.color; });
       
 });
 
