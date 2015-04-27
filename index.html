@@ -13,10 +13,6 @@ body {
   shape-rendering: crispEdges;
 }
 
-.x.axis path {
-  display: none;
-}
-
 .line {
   fill: none;
   stroke: steelblue;
@@ -34,7 +30,7 @@ var margin = {top: 20, right: 80, bottom: 30, left: 50},
 
 var parseDate = d3.time.format("%Y%m%d").parse;
 
-var x = d3.time.scale()
+var x = d3.scale.linear()
     .range([0, width]);
 
 var y = d3.scale.linear()
