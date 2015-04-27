@@ -29,11 +29,11 @@ body {
   <tr>
     <td>
       <select id="cluster_sel">
-        <option>cluster 1</option>
-        <option>cluster 2</option>
-        <option>cluster 3</option>
-        <option>cluster 4</option>
-        <option>cluster 5</option>
+        <option value='c1'>cluster 1</option>
+        <option value='c2'>cluster 2</option>
+        <option value='c3'>cluster 3</option>
+        <option value='c4'>cluster 4</option>
+        <option value='c5'>cluster 5</option>
       </select>
     </td>
   </tr>
@@ -48,7 +48,7 @@ body {
 function AddPlot(data_path) {
   var margin = {top: 20, right: 80, bottom: 30, left: 50},
       width = 960 - margin.left - margin.right,
-      height = 500 - margin.top - margin.bottom;
+      height = 300 - margin.top - margin.bottom;
   
   var x = d3.scale.linear()
       .range([0, width]);
@@ -127,8 +127,28 @@ function AddPlot(data_path) {
   });
 }
 
+var clusters = [['203','212','217','225'],
+                ['204','205','208','209','210','211','214','215','219','224'],
+                ['206','207','218','220','222','228','230'],
+                ['200','202','213'],
+                ['201','221','223','226','227','229']];
+    
+function AddClusterPlot(cidx) {
+  var clst = clusters[cidx];
+  for (var i=0,n=clst.length;i<n;i++) {
+    AddPlot("data/c" + clst[i] + ".txt");
+  }
+}
+
 $('document').ready(function(){
   AddPlot("data/c200.txt");
-  
+  AddPlot("data/c201.txt");
+  $('#cluster_sel').change(function(){
+    $( "#cluster_sel option:selected" ).each(function() {
+      var sel = parseInt($( this ).val());
+      $('#plot').empty();
+      AddClusterPlot(sel)
+    });
+  });
 });
 </script>
