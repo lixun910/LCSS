@@ -62,7 +62,7 @@ d3.text("data/c200.txt", function(text) {
       male = [],
       female = [];
   for (var i=0, n = rows.length; i<n; i++) {
-    var row = rows[i],
+    var row = rows[i][0],
         v = row.split(" "),
         m = values[0],
         f = values[1];
