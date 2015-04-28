@@ -37,8 +37,9 @@ body {
       </select>
       <br/>
       <br/>
-      Select a Longest Common Substring to highligh:<select id="cluster_lcs">
-      </select>
+      Select a Longest Common Substring to highligh<br/>
+      Male: &nbsp;&nbsp;&nbsp;&nbsp;<select id="cluster_lcs_male"></select> <br/>
+      Female: <select id="cluster_lcs_female"></select>
     </td>
   </tr>
   <tr>
@@ -52,18 +53,23 @@ body {
 var margin = {top: 20, right: 80, bottom: 30, left: 50},
     width = 960 - margin.left - margin.right,
     height = 300 - margin.top - margin.bottom;
+
+var x = d3.scale.linear()
+    .range([0, width]);
+
+var y = d3.scale.linear()
+    .range([height, 0]);
+
+var line = d3.svg.line()
+    .interpolate("basis")
+    .x(function(d) { return x(d.index); })
+    .y(function(d) { return y(d.value); });
+
 var raw_dict = {};
 
 function AddPlot(cid) {
   var data_path = "data/c" + cid + ".txt";
 
-  
-  var x = d3.scale.linear()
-      .range([0, width]);
-  
-  var y = d3.scale.linear()
-      .range([height, 0]);
-  
   var color = d3.scale.category10();
   
   var xAxis = d3.svg.axis()
@@ -74,14 +80,10 @@ function AddPlot(cid) {
       .scale(y)
       .orient("left");
   
-  var line = d3.svg.line()
-      .interpolate("basis")
-      .x(function(d) { return x(d.index); })
-      .y(function(d) { return y(d.value); });
-  
   var svg = d3.select("#plot").append("svg")
       .attr("width", width + margin.left + margin.right)
       .attr("height", height + margin.top + margin.bottom)
+      .attr("id", "c" + cid)
     .append("g")
       .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
       
@@ -155,7 +157,9 @@ var clusters = [['203','212','217','225'],
                 ['200','202','213'],
                 ['201','221','223','226','227','229']];
 
-var cluster_LCSS = [['4555555555555555555555555555','5555555555555555555555555554']];
+var cluster_LCSS = [{'male':['4555555555555555555555555555','5555555555555555555555555554'],
+                     'female': []},
+                   ];
     
 function AddClusterPlot(cidx) {
   var clst = clusters[cidx];
@@ -166,14 +170,90 @@ function AddClusterPlot(cidx) {
 
 function AddLCSSOptions(cidx) {
   var lcss_set = cluster_LCSS[cidx];
-  $('#cluster_lcs').find('option').remove().end()
+  $('#cluster_lcs_male').find('option').remove().end()
     .append('<option></option>');
-  for (var i=0,n=lcss_set.length;i<n;i++) {
-    $('#cluster_lcs').append('<option value="'+lcss_set[i]+'">'+lcss_set[i]+'</option>');
+  for (var k in lcss_set) {
+    var lcss_data = lcss_set[k];
+    for (var i=0,n=lcss_data.length;i<n;i++) {
+      $('#cluster_lcs_' + k).append('<option value="'+lcss_data[i]+'">'+lcss_data[i]+'</option>');
+    }
   }
 }
 
 var select_cid=0;
+
+function highlighLCS() {
+  var male_lcs = $( "#cluster_lcs_male option:selected" ).val(),
+      female_lcs = $( "#cluster_lcs_female option:selected" ).val();
+
+  d3.selectAll('.line')
+      .transition()
+      .style('opacity',0.2);
+
+  var couples = clusters[select_cid],
+      n = couples.length;
+
+  var data_dict =  {};
+
+  d3.selectAll(".hline").remove();
+
+  for (var i=0;i < n; i++ ) {
+    var cid = couples[i],
+        data = [],
+        raw_data = raw_dict[cid],
+        raw_male = raw_data.male,
+        raw_female = raw_data.male;
+
+    if (male_lcs && male_lcs.length>0) {
+      var raw_select = raw_male,
+          start = 0;
+      
+      while (start >=0) {
+        start = raw_male.indexOf(male_lcs, start);
+        if (start >=0) {
+          var values = [];
+          for (var j=0, m=male_lcs.length;j<m;j++) { 
+            values.push({'index':j+start, 'value':parseInt(male_lcs[j])});
+          }
+          data.push({'color':'blue', 'values':values});
+          start += 1;
+        }
+      }
+    }
+    if (female_lcs && female_lcs.length>0) {
+      var raw_select = raw_female,
+          start = 0;
+      
+      while (start >=0) {
+        start = raw_male.indexOf(female_lcs, start);
+        if (start >=0) {
+          var values = [];
+          for (var j=0, m=female_lcs.length;j<m;j++) { 
+            values.push({'index':j+start, 'value':parseInt(female_lcs[j])});
+          }
+          data.push({'color':'blue', 'values':values});
+          start += 1;
+        }
+      }
+    }
+    data_dict[cid] = data;
+  }
+
+  for (var i=0;i < n; i++ ) {
+    var cid = couples[i],
+        svg = d3.select("#c" + cid + " g");
+
+    var hline = svg.selectAll(".hline")
+        .data(data_dict[cid])
+      .enter().append("g")
+        .attr("class", "hline");
+
+    hline.append("path")
+        .attr("class", "line")
+        .attr("d", function(d) { return line(d.values); })
+        .style("stroke", function(d) { return d.color; });
+  }
+}
 
 $('document').ready(function(){
   AddClusterPlot(0);
@@ -188,48 +268,11 @@ $('document').ready(function(){
     });
   });
 
-  $('#cluster_lcs').change(function(){
-    var sel = $( this ).val();
-
-    d3.selectAll('.line')
-        .transition()
-        .style('opacity',0.2);
-
-    var couples = clusters[select_cid],
-        n = couples.length;
-
-    var data =  [];
-
-    for (var i=0;i < n; i++ ) {
-      var cid = couples[i];
-      var values = [];
-      for (var j=0, m=sel.length;j<m;j++) { 
-        values.push({'index':i, 'value':parseInt(sel[j])});
-      }
-      data.push({'color':'red', 'values':values});
-    }
-
-    var svg = d3.selectAll("svg");
-
-  var x = d3.scale.linear()
-      .range([0, width]);
-  
-  var y = d3.scale.linear()
-      .range([height, 0]);
-  var line = d3.svg.line()
-      .interpolate("basis")
-      .x(function(d) { return x(d.index); })
-      .y(function(d) { return y(d.value); });
-
-    var hline = svg.selectAll(".hline")
-        .data(data)
-      .enter().append("g")
-        .attr("class", "hline");
-
-    hline.append("path")
-        .attr("class", "line")
-        .attr("d", function(d) { return line(d.values); })
-        .style("stroke", function(d) { return d.color; });
+  $('#cluster_lcs_male').change(function(){
+    highlighLCS();
+  });
+  $('#cluster_lcs_female').change(function(){
+    highlighLCS();
   });
 });
 </script>
