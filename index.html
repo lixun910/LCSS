@@ -21,19 +21,23 @@ body {
 
 </style>
 <body>
-<script src="http://d3js.org/d3.v3.js"></script>
-<script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
+<script src="d3.v3.js"></script>
+<script src="jquery-2.1.3.min.js"></script>
 
 
 <table>
   <tr>
     <td>
       <select id="cluster_sel">
-        <option value='c1'>cluster 1</option>
-        <option value='c2'>cluster 2</option>
-        <option value='c3'>cluster 3</option>
-        <option value='c4'>cluster 4</option>
-        <option value='c5'>cluster 5</option>
+        <option value=1>cluster 1</option>
+        <option value=2>cluster 2</option>
+        <option value=3>cluster 3</option>
+        <option value=4>cluster 4</option>
+        <option value=5>cluster 5</option>
+      </select>
+      <br/>
+      <br/>
+      Select a Longest Common Substring to highligh:<select id="cluster_lcs">
       </select>
     </td>
   </tr>
@@ -45,10 +49,14 @@ body {
 </table>
 
 <script>
-function AddPlot(data_path) {
-  var margin = {top: 20, right: 80, bottom: 30, left: 50},
-      width = 960 - margin.left - margin.right,
-      height = 300 - margin.top - margin.bottom;
+var margin = {top: 20, right: 80, bottom: 30, left: 50},
+    width = 960 - margin.left - margin.right,
+    height = 300 - margin.top - margin.bottom;
+var raw_dict = {};
+
+function AddPlot(cid) {
+  var data_path = "data/c" + cid + ".txt";
+
   
   var x = d3.scale.linear()
       .range([0, width]);
@@ -79,17 +87,23 @@ function AddPlot(data_path) {
       
   d3.text(data_path, function(text) {
     var rows = d3.csv.parseRows(text),
-        male = [],
+        male = [], 
         female = [],
+        raw_male = '',
+        raw_female = '',
         data = [];
     for (var i=0, n = rows.length; i<n; i++) {
       var row = rows[i][0],
           v = row.split(" "),
           m = v[0],
           f = v[1];
+      raw_male += m;
+      raw_female += f;
       male.push({'index':i, 'value':parseInt(m)});
       female.push({'index':i, 'value':parseInt(f)});
     }
+    
+    raw_dict[cid] = {'male': raw_male, 'female': raw_female};
     data = [{'color':'blue', 'values':male},{'color':'red', 'values':female}];
     
     x.domain([0, n]);
@@ -100,7 +114,8 @@ function AddPlot(data_path) {
         .attr("transform", "translate(0," + height + ")")
         .call(xAxis)
       .append("text")
-        .attr("x", n)
+        .attr("x", width)
+        .attr("y", -6)
         .style("text-anchor", "end")
         .text("Time Step");
   
@@ -113,6 +128,13 @@ function AddPlot(data_path) {
         .attr("dy", ".71em")
         .style("text-anchor", "end")
         .text("Affect Rate");
+
+    svg.append("text")
+      .attr("class", "title")
+      .attr("x", width/2)
+      .attr("y", 0 - (margin.top / 2))
+      .attr("text-anchor", "middle")
+      .text(data_path);
   
     var mline = svg.selectAll(".male")
         .data(data)
@@ -121,7 +143,7 @@ function AddPlot(data_path) {
   
     mline.append("path")
         .attr("class", "line")
-        .attr("d", function(d) { console.log(d); return line(d.values); })
+        .attr("d", function(d) { return line(d.values); })
         .style("stroke", function(d) { return d.color; });
         
   });
@@ -132,23 +154,82 @@ var clusters = [['203','212','217','225'],
                 ['206','207','218','220','222','228','230'],
                 ['200','202','213'],
                 ['201','221','223','226','227','229']];
+
+var cluster_LCSS = [['4555555555555555555555555555','5555555555555555555555555554']];
     
 function AddClusterPlot(cidx) {
   var clst = clusters[cidx];
   for (var i=0,n=clst.length;i<n;i++) {
-    AddPlot("data/c" + clst[i] + ".txt");
+    AddPlot(clst[i]);
   }
 }
 
+function AddLCSSOptions(cidx) {
+  var lcss_set = cluster_LCSS[cidx];
+  $('#cluster_lcs').find('option').remove().end()
+    .append('<option></option>');
+  for (var i=0,n=lcss_set.length;i<n;i++) {
+    $('#cluster_lcs').append('<option value="'+lcss_set[i]+'">'+lcss_set[i]+'</option>');
+  }
+}
+
+var select_cid=0;
+
 $('document').ready(function(){
-  AddPlot("data/c200.txt");
-  AddPlot("data/c201.txt");
+  AddClusterPlot(0);
+  AddLCSSOptions(0);
+
   $('#cluster_sel').change(function(){
     $( "#cluster_sel option:selected" ).each(function() {
       var sel = parseInt($( this ).val());
+      select_cid = sel -1;
       $('#plot').empty();
-      AddClusterPlot(sel)
+      AddClusterPlot(select_cid)
     });
+  });
+
+  $('#cluster_lcs').change(function(){
+    var sel = $( this ).val();
+
+    d3.selectAll('.line')
+        .transition()
+        .style('opacity',0.2);
+
+    var couples = clusters[select_cid],
+        n = couples.length;
+
+    var data =  [];
+
+    for (var i=0;i < n; i++ ) {
+      var cid = couples[i];
+      var values = [];
+      for (var j=0, m=sel.length;j<m;j++) { 
+        values.push({'index':i, 'value':parseInt(sel[j])});
+      }
+      data.push({'color':'red', 'values':values});
+    }
+
+    var svg = d3.selectAll("svg");
+
+  var x = d3.scale.linear()
+      .range([0, width]);
+  
+  var y = d3.scale.linear()
+      .range([height, 0]);
+  var line = d3.svg.line()
+      .interpolate("basis")
+      .x(function(d) { return x(d.index); })
+      .y(function(d) { return y(d.value); });
+
+    var hline = svg.selectAll(".hline")
+        .data(data)
+      .enter().append("g")
+        .attr("class", "hline");
+
+    hline.append("path")
+        .attr("class", "line")
+        .attr("d", function(d) { return line(d.values); })
+        .style("stroke", function(d) { return d.color; });
   });
 });
 </script>
